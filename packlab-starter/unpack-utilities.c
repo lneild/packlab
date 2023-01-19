@@ -31,6 +31,70 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
   // Validate the header and set configurations based on it
   // Call error_and_exit() if the header is invalid or input_len is shorter than expected
 
+  // checking input length:
+  if (input_len < 4){
+    error_and_exit("input header size error - not large enough"); 
+  }
+
+  if (input_data[0] != 0x02 || input_data[1] != 0x13){
+    error_and_exit("magic bytes are incorrect"); 
+  }
+  else if (input_data[2] != 0x01) {
+    error_and_exit("version byte is incorrect"); 
+  }
+  else {
+    // make a copy since editing the value
+    // preserve original data
+    uint8_t flag_copy = input_data[3]; 
+    config->data_offset = 4; // at least 4
+
+    // init all configs to false
+    config->should_decompress = false;
+    config->should_decrypt = false;
+    config->should_checksum = false; 
+
+    // compress bit
+    if (flag_copy >> 7 == 1){
+      config->should_decompress = true; 
+      flag_copy = flag_copy - 128; 
+      config->data_offset += 16;
+      config->should_decompress = true; 
+      for (size_t i = 0; i < 16; i++) {
+        // pulling out dictionary and writing into conig
+        config->dictionary_data[i] = input_data[i+4];
+      }
+    }
+    
+    // encrypt bit
+    if (flag_copy >> 6 == 1) {
+      config->should_decrypt = true; 
+      flag_copy = flag_copy - 64; 
+    }
+    // checksum bit
+    if (flag_copy >> 5 == 1) {
+      config->should_checksum = true; 
+      config->data_offset += 2;
+
+      // updating checksum value in config:
+      // need index from input_data - depends on if dict
+      size_t i = 4; 
+      if (config->should_decompress){
+        i += 16; 
+      }
+      uint8_t d1 = input_data[i]; 
+      uint8_t d2 = input_data[i+1]; 
+      uint16_t val = (d2 << 8) | d1;
+      config->checksum_value = val; 
+    }
+
+    // test print statements:
+    printf("compress = %d\n", (int) config->should_decompress);
+    printf("encrypt = %d\n", (int) config->should_decrypt);
+    printf("checksum = %d\n", (int) config->should_checksum);
+    printf("data offset = %d\n", (int) config->data_offset);
+    
+  }
+
 }
 
 uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {

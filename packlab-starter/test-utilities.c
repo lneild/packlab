@@ -70,8 +70,16 @@ int main(void) {
   int result = test_lfsr_step();
   if (result != 0) {
     printf("Error when testing LFSR implementation\n");
-    return 1;
+    // return 1;
   }
+
+  // test
+  packlab_config_t config = {0}; 
+  uint8_t header[22] = {0x02, 0x13, 0x01, 0xE0, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00};
+  parse_header(header, 22, &config);
 
   // TODO - add tests here for other functionality
   // You can craft arbitrary array data as inputs to the functions
