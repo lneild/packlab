@@ -83,7 +83,7 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
       }
       uint8_t d1 = input_data[i]; 
       uint8_t d2 = input_data[i+1]; 
-      uint16_t val = (d2 << 8) | d1;
+      uint16_t val = (d1 << 8) | d2;
       config->checksum_value = val; 
     }
 
@@ -92,6 +92,7 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
     printf("encrypt = %d\n", (int) config->should_decrypt);
     printf("checksum = %d\n", (int) config->should_checksum);
     printf("data offset = %d\n", (int) config->data_offset);
+    printf("checksum val = %d\n", (int) config->checksum_value);
     
   }
 
