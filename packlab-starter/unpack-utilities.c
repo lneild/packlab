@@ -74,17 +74,6 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
     if (flag_copy >> 5 == 1) {
       config->should_checksum = true; 
       config->data_offset += 2;
-
-      // updating checksum value in config:
-      // need index from input_data - depends on if dict
-      size_t i = 4; 
-      if (config->should_decompress){
-        i += 16; 
-      }
-      uint8_t d1 = input_data[i]; 
-      uint8_t d2 = input_data[i+1]; 
-      uint16_t val = (d1 << 8) | d2;
-      config->checksum_value = val; 
     }
 
     // test print statements:
@@ -104,7 +93,21 @@ uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {
   // Calculate a checksum over input_data
   // Return the checksum value
 
-  return 0;
+  // init val to 0
+  if (input_len == 4){
+    return 0;
+  }
+  
+  // index of checksum in 2 in back
+  size_t i = input_len - 3; 
+  
+  // getting 2 vals and putting together
+  uint8_t d1 = input_data[i]; 
+  uint8_t d2 = input_data[i+1]; 
+  uint16_t val = (d1 << 8) | d2;
+
+  return val; 
+
 }
 
 uint16_t lfsr_step(uint16_t oldstate) {
