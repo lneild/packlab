@@ -81,7 +81,6 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
     printf("encrypt = %d\n", (int) config->should_decrypt);
     printf("checksum = %d\n", (int) config->should_checksum);
     printf("data offset = %d\n", (int) config->data_offset);
-    printf("checksum val = %d\n", (int) config->checksum_value);
     
   }
 
@@ -93,18 +92,15 @@ uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {
   // Calculate a checksum over input_data
   // Return the checksum value
 
-  // init val to 0
-  if (input_len == 4){
-    return 0;
+  uint16_t val = 0; 
+
+  for(size_t i = 0; i < input_len; i++){
+    // update val:
+    val += input_data[i]; 
   }
-  
-  // index of checksum in 2 in back
-  size_t i = input_len - 3; 
-  
-  // getting 2 vals and putting together
-  uint8_t d1 = input_data[i]; 
-  uint8_t d2 = input_data[i+1]; 
-  uint16_t val = (d1 << 8) | d2;
+
+  // test print statements:
+  printf("checksum val = %d\n", (int) val);
 
   return val; 
 
@@ -115,8 +111,25 @@ uint16_t lfsr_step(uint16_t oldstate) {
   // TODO
   // Calculate the new LFSR state given previous state
   // Return the new LFSR state
+   
+  // push those vals to the front index
+  // ront index will be the x or of the assesing indicies
+  uint16_t var0 = oldstate << 15;
+  uint16_t var11 = oldstate << 4; 
+  uint16_t front = var0 ^ var11; 
+  uint16_t var13 = oldstate << 2; 
+  front = front ^ var13;
+  uint16_t var14 = oldstate << 1; 
+  front = front ^ var14;
+  // now only keep track of the first dig
+  // make the rest all 0s
+  front = front >> 15; 
+  front = front << 15; 
 
-  return 0;
+  uint16_t newstate = oldstate >> 1;
+  newstate = (newstate | front); 
+  
+  return newstate; 
 }
 
 void decrypt_data(uint8_t* input_data, size_t input_len,
