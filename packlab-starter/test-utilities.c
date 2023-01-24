@@ -63,6 +63,44 @@ int test_lfsr_step(void) {
   return 0;
 }
 
+void test_parse_header(void){
+  packlab_config_t config = {0}; 
+  uint8_t header[22] = {0x02, 0x13, 0x01, 0xE0, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x12, 0x14};
+  parse_header(header, 22, &config);
+}
+
+void test_checksum(void){
+  uint8_t input1[3] = {0x01, 0x03, 0x04};
+  calculate_checksum(input1, 3);
+  uint8_t input2[1] = {0x01};
+  calculate_checksum(input2, 1); 
+}
+
+void test_decrypt(void){
+  uint8_t input_data[3] = {0x60, 0x5A, 0x60};
+  uint8_t output_data[3];
+  uint16_t key = 0x8016;
+  decrypt_data(input_data, 3, output_data, 3, key);
+  // for (size_t i = 0; i < 3; i ++){
+  //   printf("%i\n", output_data[i]);
+  // }
+}
+
+void test_decompression(void){
+  uint8_t input_data[3] = {0x01, 0x07, 0x42};
+  uint8_t dict[4] = {0x30, 0x31, 0x32, 0x33};
+  uint8_t output_data[5]; 
+  size_t len = decompress_data(input_data, 3, output_data, 0, dict);
+  // printf("resulting length: %li\n", len);
+  // printf("expected length: 5\n");
+  // for (size_t i = 0; i < len; i ++){
+  //   printf("%i\n", output_data[i]);
+  // }
+}
+
 
 int main(void) {
 
@@ -70,29 +108,18 @@ int main(void) {
   int result = test_lfsr_step();
   if (result != 0) {
     printf("Error when testing LFSR implementation\n");
-    // return 1;
+    return 1;
   }
-
-  // test
-
-  // parse header test:
-  // packlab_config_t config = {0}; 
-  // uint8_t header[22] = {0x02, 0x13, 0x01, 0xE0, 
-  // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-  // 0x12, 0x14};
-  // parse_header(header, 22, &config);
-
-  // calculate checksum test:
-  // uint8_t input1[3] = {0x01, 0x03, 0x04};
-  // calculate_checksum(input1, 3);
-  // uint8_t input2[1] = {0x01};
-  // calculate_checksum(input2, 1); 
 
   // TODO - add tests here for other functionality
   // You can craft arbitrary array data as inputs to the functions
   // Parsing headers, checksumming, decryption, and decompressing are all testable
 
+  test_parse_header(); 
+  test_checksum(); 
+  test_decrypt(); 
+  test_decompression(); 
+ 
   printf("All tests passed successfully!\n");
   return 0;
 }

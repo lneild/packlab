@@ -58,7 +58,6 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
       config->should_decompress = true; 
       flag_copy = flag_copy - 128; 
       config->data_offset += 16;
-      config->should_decompress = true; 
       for (size_t i = 0; i < 16; i++) {
         // pulling out dictionary and writing into conig
         config->dictionary_data[i] = input_data[i+4];
@@ -74,13 +73,22 @@ void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* confi
     if (flag_copy >> 5 == 1) {
       config->should_checksum = true; 
       config->data_offset += 2;
+
+      size_t i = 4; 
+      if (config->should_decompress){
+        i += 16; 
+      }
+      uint8_t d1 = input_data[i]; 
+      uint8_t d2 = input_data[i+1]; 
+      uint16_t val = (d1 << 8) | d2;
+      config->checksum_value = val; 
     }
 
     // test print statements:
-    printf("compress = %d\n", (int) config->should_decompress);
-    printf("encrypt = %d\n", (int) config->should_decrypt);
-    printf("checksum = %d\n", (int) config->should_checksum);
-    printf("data offset = %d\n", (int) config->data_offset);
+    // printf("compress = %d\n", (int) config->should_decompress);
+    // printf("encrypt = %d\n", (int) config->should_decrypt);
+    // printf("checksum = %d\n", (int) config->should_checksum);
+    // printf("data offset = %d\n", (int) config->data_offset);
     
   }
 
@@ -100,7 +108,7 @@ uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {
   }
 
   // test print statements:
-  printf("checksum val = %d\n", (int) val);
+  // printf("checksum val = %d\n", (int) val);
 
   return val; 
 
@@ -143,7 +151,40 @@ void decrypt_data(uint8_t* input_data, size_t input_len,
   // Apply psuedorandom number with an XOR in big-endian order
   // Beware: input_data may be an odd number of bytes
 
+  bool cont = true; 
+  uint16_t s = encryption_key; 
+  size_t i = 0; 
+
+  while(cont) {
+    // take a step
+    s = lfsr_step(s);
+
+    // seperate 16 into 2 8s:
+    uint8_t b1 = (s >> 8); 
+    uint8_t b2 = s & 0x00FF; 
+
+    if (i < input_len) {
+      output_data[i] = (b2 ^ input_data[i]); 
+      output_len += 1; 
+      i += 1; 
+
+      if (i < input_len) {
+        output_data[i] = (b1 ^ input_data[i]); 
+        output_len += 1; 
+        i += 1; 
+      }
+
+    }
+
+    // check if we need to keep going:
+    if (i >= input_len) {
+      cont = false; 
+    }
+
+  }
+
 }
+
 
 size_t decompress_data(uint8_t* input_data, size_t input_len,
                        uint8_t* output_data, size_t output_len,
@@ -153,6 +194,77 @@ size_t decompress_data(uint8_t* input_data, size_t input_len,
   // Decompress input_data and write result to output_data
   // Return the length of the decompressed data
 
-  return 0;
+  // iterate through bytes of input
+  // case 1 - normal byte = copy over
+  // case 2 - escape byte = look 1 byte further 
+  // careful to not go past end - check len as go
+  
+  // general:
+  // decompress input data and write result into output
+  // dictionary_data = compression diction used when compressing
+  // input_data = array of bytes (only contains data to decompress)
+  // does not contain header bytes
+  // return = total len of decompressed data
+
+  bool cont = true; 
+  size_t input_data_i = 0; 
+  size_t output_data_i = 0; 
+
+  while (cont){
+    if (input_data_i < input_len){
+      uint8_t b1 = input_data[input_data_i]; 
+
+      // if it is an escape key:
+      // make sure there is a bit afterwards to look at
+      if (b1 == 0x07){
+        if (input_data_i+1 < input_len){
+          uint8_t b2 = input_data[input_data_i+1]; 
+          
+          // is the next bit 0x00?
+          if (b2 == 0x00){
+            // just copy over and move on
+            output_data[output_data_i] = b1; 
+            input_data_i += 2; 
+            output_data_i += 1;
+          }
+
+          // interpret the next bit and fill in dictionary data
+          else {
+            // first 4 bit = repeate count
+            // second 4 bit = index in dictionary being repeated
+            uint8_t rep = b2 >> 4; // select top 4 bits
+            uint8_t dict_i = b2 & 0x0F; // select bottom 4 bits
+
+            for (size_t j = 0; j < rep; j++){
+              output_data[output_data_i+j] = dictionary_data[dict_i];
+            }
+            output_data_i += rep;
+            input_data_i += 2; // go ahead 2 
+          }
+        }
+        // when the escape key is the last thing - just copy over
+        else {
+          output_data[output_data_i] = b1; 
+          input_data_i += 1; 
+          output_data_i += 1;
+        }
+      }
+
+      // when it is not an escape key, copy over and move on
+      else{
+        output_data[output_data_i] = b1;
+        output_data_i += 1; 
+        input_data_i += 1; 
+      }
+    }
+
+    if (input_data_i >= input_len){
+      cont = false; 
+    }
+
+  }
+
+  output_len = output_data_i; 
+  return output_len;
 }
 
